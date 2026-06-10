@@ -1,0 +1,171 @@
+﻿import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import type { MonthlyBill } from "@/lib/calculations/billCalculator";
+import type { BazarExpense, MealEntry, OtherExpense, Profile } from "@/types/database";
+import { CATEGORY_LABELS } from "@/lib/constants";
+import { monthLabel, shortDate } from "@/lib/utils";
+
+// jsPDF's built-in fonts cannot render the Taka glyph, so PDFs use "Tk".
+const tk = (n: number) =>
+  `Tk ${n.toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
+
+const PRIMARY: [number, number, number] = [108, 99, 255];
+const DARK: [number, number, number] = [26, 26, 46];
+
+type JsPdfWithAutoTable = jsPDF & { lastAutoTable: { finalY: number } };
+
+export function generateBillPdf(opts: {
+  year: number;
+  month: number;
+  bill: MonthlyBill;
+  bazar: BazarExpense[];
+  others: OtherExpense[];
+  meals: MealEntry[];
+  profiles: Profile[];
+}) {
+  const { year, month, bill, bazar, others, meals, profiles } = opts;
+  const label = monthLabel(year, month);
+  const doc = new jsPDF();
+  const pageW = doc.internal.pageSize.getWidth();
+
+  // ---- Header ----
+  doc.setFillColor(...DARK);
+  doc.rect(0, 0, pageW, 34, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.text("AAMADER BARI", 14, 14);
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(...PRIMARY);
+  doc.text(`Monthly Bill - ${label}`, 14, 22);
+  doc.setTextColor(160, 160, 180);
+  doc.setFontSize(8);
+  doc.text(
+    `Generated: ${new Date().toLocaleString()}  |  Confidential`,
+    14,
+    29
+  );
+
+  const nameOf = (id: string) =>
+    profiles.find((p) => p.id === id)?.full_name ?? "Unknown";
+
+  // ---- Summary stats ----
+  let y = 42;
+  doc.setTextColor(...DARK);
+  doc.setFontSize(10);
+  doc.text(
+    `Total Bazar: ${tk(bill.totalBazar)}    Total Meals: ${bill.totalMeals.toFixed(
+      2
+    )}    Meal Rate: ${tk(bill.mealRate)}`,
+    14,
+    y
+  );
+  y += 6;
+
+  // ---- Member Summary Table ----
+  autoTable(doc, {
+    startY: y,
+    head: [["Name", "Total Meals", "Meal Cost", "Fixed Share", "Custom Share", "TOTAL DUE"]],
+    body: bill.members.map((m) => [
+      m.profile.full_name,
+      m.meals.toFixed(2),
+      tk(m.mealCost),
+      tk(m.fixedShare),
+      tk(m.customShare),
+      tk(m.total),
+    ]),
+    foot: [[
+      "GRAND TOTAL",
+      bill.totalMeals.toFixed(2),
+      "",
+      "",
+      "",
+      tk(bill.grandTotal),
+    ]],
+    headStyles: { fillColor: PRIMARY },
+    footStyles: { fillColor: DARK },
+    styles: { fontSize: 9 },
+  });
+
+  // ---- Bazar Detail ----
+  y = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 10;
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.text("Bazar Detail", 14, y);
+  autoTable(doc, {
+    startY: y + 3,
+    head: [["Date", "Shopper", "Amount", "Items"]],
+    body: bazar
+      .slice()
+      .sort((a, b) => a.expense_date.localeCompare(b.expense_date))
+      .map((e) => [
+        shortDate(e.expense_date),
+        nameOf(e.shopper_id),
+        tk(Number(e.amount)),
+        e.comment ?? "",
+      ]),
+    headStyles: { fillColor: [0, 200, 150] },
+    styles: { fontSize: 8 },
+  });
+
+  // ---- Other Expenses ----
+  y = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 10;
+  doc.setFontSize(12);
+  doc.text("Other Expenses", 14, y);
+  autoTable(doc, {
+    startY: y + 3,
+    head: [["Category", "Amount", "Split Method", "Per Person Share"]],
+    body: others.map((e) => [
+      e.category === "custom" ? e.label ?? "Custom" : CATEGORY_LABELS[e.category],
+      tk(Number(e.amount)),
+      e.split_method === "equal" ? "Equal per head" : "Meal-based",
+      e.split_method === "equal" && bill.memberCount > 0
+        ? tk(Number(e.amount) / bill.memberCount)
+        : "proportional",
+    ]),
+    headStyles: { fillColor: [255, 107, 107] },
+    styles: { fontSize: 8 },
+  });
+
+  // ---- Meal Detail (per person daily B/L/D) ----
+  y = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 10;
+  doc.setFontSize(12);
+  doc.text("Meal Detail (B + L + D per day)", 14, y);
+  const active = bill.members.map((m) => m.profile);
+  const dates = Array.from(new Set(meals.map((m) => m.entry_date))).sort();
+  autoTable(doc, {
+    startY: y + 3,
+    head: [["Date", ...active.map((p) => p.full_name)]],
+    body: dates.map((d) => [
+      shortDate(d),
+      ...active.map((p) => {
+        const e = meals.find((m) => m.entry_date === d && m.user_id === p.id);
+        if (!e) return "-";
+        return `${Number(e.breakfast)} + ${Number(e.lunch)} + ${Number(e.dinner)}`;
+      }),
+    ]),
+    headStyles: { fillColor: PRIMARY },
+    styles: { fontSize: 7 },
+  });
+
+  // ---- Footer on every page ----
+  const pages = doc.getNumberOfPages();
+  for (let i = 1; i <= pages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(140, 140, 160);
+    doc.text(
+      "Generated by Aamader Bari App  |  Not an official invoice",
+      14,
+      doc.internal.pageSize.getHeight() - 8
+    );
+    doc.text(
+      `Page ${i} / ${pages}`,
+      pageW - 30,
+      doc.internal.pageSize.getHeight() - 8
+    );
+  }
+
+  doc.save(`aamader-bari-bill-${year}-${String(month).padStart(2, "0")}.pdf`);
+}
