@@ -10,7 +10,7 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Aamader Bari — Meal & Expense Manager",
+  title: "Bachelor Home — Meal & Expense Manager",
   description:
     "Meal & expense management for our shared home. Track daily meals, bazar expenses and monthly bills.",
 };

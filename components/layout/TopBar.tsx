@@ -18,9 +18,9 @@ export function TopBar() {
           <Logo size="sm" />
           <div className="leading-tight">
             <div className="text-sm font-extrabold tracking-tight">
-              Aamader Bari
+              Bachelor Home
             </div>
-            <div className="text-[10px] text-muted">আমাদের বাড়ি</div>
+            <div className="text-[10px] text-muted">ব্যাচেলর হোম</div>
           </div>
         </Link>
         <div className="flex items-center gap-1">

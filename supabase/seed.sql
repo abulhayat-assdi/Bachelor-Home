@@ -1,5 +1,5 @@
 -- ============================================================
--- AAMADER BARI — Seed: initial 5 members (PRD Section 03)
+-- BACHELOR HOME — Seed: initial 5 members (PRD Section 03)
 -- Profiles are created automatically (trigger) when each member
 -- first signs up / accepts invite with these emails.
 -- ============================================================

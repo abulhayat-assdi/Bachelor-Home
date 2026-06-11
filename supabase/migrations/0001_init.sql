@@ -1,5 +1,5 @@
 -- ============================================================
--- AAMADER BARI — Initial Schema
+-- BACHELOR HOME — Initial Schema
 -- Run this in Supabase SQL Editor (or via supabase db push)
 -- ============================================================
 
@@ -191,7 +191,7 @@ returns trigger
 language plpgsql security definer set search_path = public
 as $$
 begin
-  perform notify_members(new.id, 'member_joined', new.full_name || ' has joined Aamader Bari!');
+  perform notify_members(new.id, 'member_joined', new.full_name || ' has joined Bachelor Home!');
   return new;
 end;
 $$;

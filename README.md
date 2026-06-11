@@ -1,4 +1,4 @@
-# 🏠 Aamader Bari — Meal & Expense Management
+# 🏠 Bachelor Home — Meal & Expense Management
 
 A mobile-first web app for our shared house to track **daily meals**, **bazar (grocery) expenses** and the **monthly bill** — replacing the old Google Sheets workflow. Built exactly per the PRD v1.0 (10 June 2026).
 
@@ -22,7 +22,7 @@ A mobile-first web app for our shared house to track **daily meals**, **bazar (g
 
 ### 1. Create the Supabase project
 
-1. Go to [supabase.com](https://supabase.com) → New project (e.g. `aamader-bari`).
+1. Go to [supabase.com](https://supabase.com) → New project (e.g. `bachelor-home`).
 2. Open **SQL Editor** and run, in order:
    - [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql) — all tables, RLS policies, triggers, duty-schedule generator, notification system, realtime, avatars bucket.
    - [`supabase/seed.sql`](supabase/seed.sql) — the 5 initial members (Saiful Azam, **Abul Hayat = Super Admin**, Tareq, Sumon, Javed Omar).
@@ -31,7 +31,7 @@ A mobile-first web app for our shared house to track **daily meals**, **bazar (g
 
 1. **Authentication → Providers → Email**: enabled (default).
 2. **Authentication → Providers → Google**: enable it. Create OAuth credentials at [console.cloud.google.com](https://console.cloud.google.com) (OAuth client → Web), set the redirect URL shown by Supabase, paste Client ID/Secret.
-3. **Authentication → URL Configuration**: set Site URL to your app URL (e.g. `https://aamaderbari.vercel.app`) and add `http://localhost:3000` to Redirect URLs for local dev.
+3. **Authentication → URL Configuration**: set Site URL to your app URL (e.g. `https://bachelor-home.vercel.app`) and add `http://localhost:3000` to Redirect URLs for local dev.
 
 ### 3. Environment variables
 

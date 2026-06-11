@@ -24,5 +24,5 @@ export const CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   custom: "Custom Expense",
 };
 
-export const APP_NAME = "Aamader Bari";
+export const APP_NAME = "Bachelor Home";
 export const APP_TAGLINE = "Meal & expense management for our home";
