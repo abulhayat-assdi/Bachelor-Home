@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   const supabase = createClient();
@@ -28,45 +27,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const admin = createAdminClient();
-
-  // Guard: cannot demote the last active admin.
-  if (role === "member") {
-    const { count } = await admin
-      .from("profiles")
-      .select("id", { count: "exact", head: true })
-      .eq("role", "admin")
-      .eq("is_active", true);
-    const { data: targetProfile } = await admin
-      .from("profiles")
-      .select("role")
-      .eq("id", target_id)
-      .single();
-    if ((count ?? 0) <= 1 && targetProfile?.role === "admin") {
-      return NextResponse.json(
-        { error: "At least one admin must remain" },
-        { status: 400 }
-      );
-    }
-  }
-
-  const { error } = await admin
-    .from("profiles")
-    .update({ role })
-    .eq("id", target_id);
+  // Delegate to the SQL RPC which atomically checks the last-admin guard,
+  // updates the role, and sends the notification — eliminating the TOCTOU
+  // race between the count check and the UPDATE that the old TS code had.
+  const { error } = await supabase.rpc("set_member_role", {
+    p_user: target_id,
+    p_role: role,
+  });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const status = error.message.includes("At least one admin") ? 400 : 500;
+    return NextResponse.json({ error: error.message }, { status });
   }
-
-  // Notify the affected member.
-  const msg =
-    role === "admin"
-      ? "You are now an admin of Bachelor Home."
-      : "Your admin access has been removed.";
-  await admin
-    .from("notifications")
-    .insert({ recipient_id: target_id, type: "role_changed", message: msg });
 
   return NextResponse.json({ ok: true });
 }

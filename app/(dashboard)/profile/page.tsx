@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Camera, KeyRound, Loader2, LogOut, Save } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -35,6 +35,17 @@ export default function ProfilePage() {
   const [password, setPassword] = useState("");
   const [savingPw, setSavingPw] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [mustChangePw, setMustChangePw] = useState(false);
+
+  useEffect(() => {
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => {
+        if (data.user?.user_metadata?.must_change_password) {
+          setMustChangePw(true);
+        }
+      });
+  }, []);
 
   if (loading || !me) {
     return <Skeleton className="h-64" />;
@@ -103,8 +114,12 @@ export default function ProfilePage() {
     setSavingPw(true);
     setMsg(null);
     const supabase = createClient();
-    const { error } = await supabase.auth.updateUser({ password });
+    const { error } = await supabase.auth.updateUser({
+      password,
+      data: { must_change_password: false },
+    });
     setSavingPw(false);
+    if (!error) setMustChangePw(false);
     setMsg(
       error
         ? { ok: false, text: error.message }
@@ -123,6 +138,13 @@ export default function ProfilePage() {
   return (
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-extrabold">My Profile</h1>
+
+      {mustChangePw && (
+        <div className="rounded-xl bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
+          Your account was created by an admin. Please set your own password
+          below before you start using the app.
+        </div>
+      )}
 
       <Card>
         <CardContent className="flex items-center gap-4 p-4">

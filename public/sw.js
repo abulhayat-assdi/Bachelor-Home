@@ -1,7 +1,13 @@
 // Lightweight service worker — makes the app installable and caches the
 // app shell so it opens (even offline). Live data still comes from Supabase
-// over the network. Bump CACHE when you change caching logic.
-const CACHE = "bh-shell-v1";
+// over the network.
+//
+// IMPORTANT: bump CACHE_VERSION on EVERY deployment that changes any of
+// the SHELL files below, or changes this fetch handler logic. Old tabs
+// will keep using the previous cache until they are closed and the new SW
+// activates. Forgetting to bump means users may get a stale offline page.
+const CACHE_VERSION = "v1"; // ← increment this on each relevant deploy
+const CACHE = `bh-shell-${CACHE_VERSION}`;
 const SHELL = ["/", "/offline", "/manifest.webmanifest", "/icon.svg"];
 
 self.addEventListener("install", (event) => {

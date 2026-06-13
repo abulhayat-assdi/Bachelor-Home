@@ -58,12 +58,13 @@ export async function POST(request: Request) {
 
   // creates the auth user with the admin-set password (email pre-confirmed so
   // the member can log in immediately); profile row is created by trigger.
-  // Member can change name/password/etc. themselves later from their profile.
+  // must_change_password prompts the member to set their own password on first
+  // visit to /profile. They can change name/password/etc. themselves any time.
   const { error: createErr } = await admin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    user_metadata: { full_name },
+    user_metadata: { full_name, must_change_password: true },
   });
   if (createErr) {
     return NextResponse.json({ error: createErr.message }, { status: 500 });

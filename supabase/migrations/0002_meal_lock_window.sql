@@ -1,10 +1,13 @@
 -- ============================================================
--- BACHELOR HOME — Meal lock window
+-- BACHELOR HOME — Meal lock window  [SUPERSEDED by 0006_fix_meal_guard.sql]
 -- Change the meal editing rules (run after 0001_init.sql):
 --   • Future days are now OPEN — members may plan ahead.
 --   • Today is open (unchanged).
 --   • PAST days lock automatically — only an admin can edit them.
 -- A locked MONTH still blocks everyone, as before.
+--
+-- NOTE: 0006 re-applies this exact function and policies idempotently.
+-- If 0006 has run, this file is effectively a no-op. Safe to keep.
 -- ============================================================
 
 -- Replace the meal guard. Previously it blocked future dates; now it

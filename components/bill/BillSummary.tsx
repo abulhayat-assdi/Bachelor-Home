@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import {
   effectiveFixedBills,
@@ -42,7 +42,7 @@ export function BillSummary({
           Monthly Household Expenses
         </h2>
         <div className="overflow-x-auto rounded-2xl border border-border-c shadow-card dark:shadow-card-dark">
-          <table className="w-full border-collapse text-right text-xs">
+          <table className="w-full border-collapse text-right text-xs [&_td]:border [&_td]:border-border-c [&_th]:border [&_th]:border-border-c">
             <thead>
               <tr className="bg-primary/10 text-primary">
                 <Th className="text-left">Name</Th>
@@ -275,6 +275,12 @@ function RentCell({
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(String(m.houseRent));
   const [busy, setBusy] = useState(false);
+
+  // Keep the displayed value in sync with SWR revalidations that happen
+  // while the field is not being actively edited.
+  useEffect(() => {
+    if (!editing) setValue(String(m.houseRent));
+  }, [m.houseRent, editing]);
 
   async function commit() {
     const n = parseFloat(value);

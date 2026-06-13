@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import useSWR from "swr";
 import { createClient } from "@/lib/supabase/client";
 import type {
@@ -61,12 +61,15 @@ interface MonthFetch {
 
 // `ensure_month` only ever returns the same id for a given year/month once the
 // row exists, so cache it and skip the extra serial RPC on every revalidation.
-const monthIdCache = new Map<string, string>();
+// Entries expire after 10 minutes so a DB reset in dev doesn't silently serve
+// a stale ID for the whole browser session.
+const MONTH_ID_TTL = 10 * 60 * 1000;
+const monthIdCache = new Map<string, { id: string; ts: number }>();
 
 async function resolveMonthId(year: number, month: number): Promise<string> {
   const cacheKey = `${year}-${month}`;
   const cached = monthIdCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached && Date.now() - cached.ts < MONTH_ID_TTL) return cached.id;
   const supabase = createClient();
   const { data, error } = await supabase.rpc("ensure_month", {
     p_year: year,
@@ -74,7 +77,7 @@ async function resolveMonthId(year: number, month: number): Promise<string> {
   });
   if (error) throw error;
   const id = data as string;
-  monthIdCache.set(cacheKey, id);
+  monthIdCache.set(cacheKey, { id, ts: Date.now() });
   return id;
 }
 
@@ -122,6 +125,11 @@ export function useMonthData(year: number, month: number): MonthData {
   );
 
   const monthId = data?.monthId ?? null;
+
+  // Stable ref so callbacks can read the latest cache without listing `data`
+  // as a dependency (which would recreate every callback on each revalidation).
+  const dataRef = useRef<MonthFetch | undefined>(undefined);
+  dataRef.current = data;
 
   // Realtime: a single deduped revalidation when anyone changes this month's data.
   useEffect(() => {
@@ -275,6 +283,15 @@ export function useMonthData(year: number, month: number): MonthData {
   const deleteCommonExpense = useCallback(
     async (id: string) => {
       const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return "Not signed in";
+      // Client-side ownership check for a readable error before hitting RLS.
+      const expense = dataRef.current?.others.find((e) => e.id === id);
+      if (expense && expense.added_by !== user.id) {
+        return "You can only delete your own expenses";
+      }
       const { error: err } = await supabase
         .from("other_expenses")
         .delete()
@@ -333,6 +350,11 @@ export function useMonthData(year: number, month: number): MonthData {
       };
 
       try {
+        // revalidate:true (unlike upsertMeal which uses false) because the
+        // paid flag is admin-only and a server round-trip confirms the final
+        // DB state, guarding against two admins toggling the same member
+        // simultaneously. Meals use false because the optimistic state is
+        // always canonical for the editing user's own row.
         await mutate(
           async (current) => {
             const { error: err } = await supabase.from("member_month").upsert(

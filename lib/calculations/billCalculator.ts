@@ -110,10 +110,13 @@ export function calculateMonthlyBill(
   const memberCommonTotal = others
     .filter((e) => e.category === "common")
     .reduce((s, e) => s + Number(e.amount), 0);
-  const fixedBillsTotal = effectiveFixedBills(others).reduce(
-    (s, e) => s + Number(e.amount),
-    0
-  );
+  // Use only real DB rows here (not the synthetic display defaults from
+  // effectiveFixedBills) so the calculation is always consistent with the
+  // data that has actually been persisted. effectiveFixedBills() is kept for
+  // the UI breakdown only.
+  const fixedBillsTotal = others
+    .filter((e) => e.category !== "common" && e.category !== "rent")
+    .reduce((s, e) => s + Number(e.amount), 0);
   const commonPool = fixedBillsTotal + memberCommonTotal;
 
   const memberCount = active.length;
