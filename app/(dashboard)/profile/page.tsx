@@ -38,13 +38,12 @@ export default function ProfilePage() {
   const [mustChangePw, setMustChangePw] = useState(false);
 
   useEffect(() => {
-    createClient()
-      .auth.getUser()
-      .then(({ data }) => {
-        if (data.user?.user_metadata?.must_change_password) {
-          setMustChangePw(true);
-        }
-      });
+    (async () => {
+      const { data } = await createClient().auth.getUser();
+      if (data.user?.user_metadata?.must_change_password) {
+        setMustChangePw(true);
+      }
+    })();
   }, []);
 
   if (loading || !me) {
