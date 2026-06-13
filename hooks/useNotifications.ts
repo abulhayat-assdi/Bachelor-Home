@@ -1,61 +1,86 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
+import useSWR from "swr";
 import { createClient } from "@/lib/supabase/client";
 import type { AppNotification } from "@/types/database";
 
+async function fetchNotifications(): Promise<AppNotification[]> {
+  const supabase = createClient();
+  const { data } = await supabase
+    .from("notifications")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  return (data as AppNotification[]) ?? [];
+}
+
 export function useNotifications() {
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading, mutate } = useSWR("notifications", fetchNotifications);
+  const notifications = data ?? [];
 
-  const refetch = useCallback(async () => {
-    const supabase = createClient();
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(100);
-    setNotifications((data as AppNotification[]) ?? []);
-    setLoading(false);
-  }, []);
-
+  // Realtime: one deduped revalidation when a new notification lands.
   useEffect(() => {
-    refetch();
     const supabase = createClient();
     const channel = supabase
-      .channel("notifications-live")
+      .channel(`notifications-live-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "notifications" },
-        () => refetch()
+        () => mutate()
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [mutate]);
 
   const markRead = useCallback(
     async (id: string) => {
       const supabase = createClient();
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
+      await mutate(
+        async (current) => {
+          await supabase.from("notifications").update({ is_read: true }).eq("id", id);
+          return current?.map((n) => (n.id === id ? { ...n, is_read: true } : n));
+        },
+        {
+          optimisticData: (current) =>
+            current?.map((n) => (n.id === id ? { ...n, is_read: true } : n)) ?? [],
+          revalidate: false,
+          rollbackOnError: true,
+        }
       );
-      await supabase.from("notifications").update({ is_read: true }).eq("id", id);
     },
-    []
+    [mutate]
   );
 
   const markAllRead = useCallback(async () => {
     const supabase = createClient();
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    await supabase
-      .from("notifications")
-      .update({ is_read: true })
-      .eq("is_read", false);
-  }, []);
+    await mutate(
+      async (current) => {
+        await supabase
+          .from("notifications")
+          .update({ is_read: true })
+          .eq("is_read", false);
+        return current?.map((n) => ({ ...n, is_read: true }));
+      },
+      {
+        optimisticData: (current) =>
+          current?.map((n) => ({ ...n, is_read: true })) ?? [],
+        revalidate: false,
+        rollbackOnError: true,
+      }
+    );
+  }, [mutate]);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
-  return { notifications, unreadCount, loading, markRead, markAllRead, refetch };
+  return {
+    notifications,
+    unreadCount,
+    loading: isLoading,
+    markRead,
+    markAllRead,
+    refetch: () => mutate(),
+  };
 }

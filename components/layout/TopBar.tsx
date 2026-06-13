@@ -12,7 +12,7 @@ export function TopBar() {
   const { me } = useProfiles();
 
   return (
-    <header className="sticky top-0 z-40 border-b border-border-c bg-bg/80 backdrop-blur-lg">
+    <header className="safe-top sticky top-0 z-40 border-b border-border-c bg-bg/80 backdrop-blur-lg">
       <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2.5">
           <Logo size="sm" />

@@ -14,7 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { memberColor } from "@/lib/constants";
-import { formatMeals, formatMoney, monthLabel } from "@/lib/utils";
+import {
+  formatMeals,
+  formatMoney,
+  monthLabel,
+  shortDate,
+  weekdayName,
+} from "@/lib/utils";
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -40,9 +46,10 @@ export default function ProfilePage() {
       (s, m) => s + Number(m.breakfast) + Number(m.lunch) + Number(m.dinner),
       0
     );
-  const myBazar = bazar
+  const myBazarEntries = bazar
     .filter((b) => b.shopper_id === me.id)
-    .reduce((s, b) => s + Number(b.amount), 0);
+    .sort((a, b) => b.expense_date.localeCompare(a.expense_date));
+  const myBazar = myBazarEntries.reduce((s, b) => s + Number(b.amount), 0);
 
   async function saveName() {
     if (!me || name == null || !name.trim()) return;
@@ -178,6 +185,46 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* My bazar — date-wise (what I bought, how much, items) */}
+      <Card>
+        <CardContent className="p-3">
+          <div className="px-1 pb-2 text-xs font-bold uppercase tracking-wide text-muted">
+            My bazar — {monthLabel(year, month)}
+          </div>
+          {myBazarEntries.length === 0 ? (
+            <p className="px-1 pb-1 text-xs text-muted">
+              No bazar done this month.
+            </p>
+          ) : (
+            <div className="flex flex-col">
+              {myBazarEntries.map((b) => (
+                <div
+                  key={b.id}
+                  className="flex items-start gap-3 rounded-xl px-1.5 py-2"
+                >
+                  <div className="w-14 shrink-0">
+                    <div className="text-sm font-extrabold">
+                      {shortDate(b.expense_date)}
+                    </div>
+                    <div className="text-[10px] text-muted">
+                      {weekdayName(b.expense_date).slice(0, 3)}
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-bold">
+                      {formatMoney(Number(b.amount))}
+                    </div>
+                    {b.comment && (
+                      <div className="text-xs text-muted">{b.comment}</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {msg && (
         <p

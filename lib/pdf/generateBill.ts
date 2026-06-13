@@ -1,6 +1,9 @@
 ﻿import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import type { MonthlyBill } from "@/lib/calculations/billCalculator";
+import {
+  effectiveFixedBills,
+  type MonthlyBill,
+} from "@/lib/calculations/billCalculator";
 import type { BazarExpense, MealEntry, OtherExpense, Profile } from "@/types/database";
 import { CATEGORY_LABELS } from "@/lib/constants";
 import { monthLabel, shortDate } from "@/lib/utils";
@@ -66,26 +69,42 @@ export function generateBillPdf(opts: {
   // ---- Member Summary Table ----
   autoTable(doc, {
     startY: y,
-    head: [["Name", "Total Meals", "Meal Cost", "Fixed Share", "Custom Share", "TOTAL DUE"]],
+    head: [[
+      "Name",
+      "Meals",
+      "Meal Exp.",
+      "Common",
+      "House Rent",
+      "Total Due",
+      "Deposit",
+      "Balance",
+      "Paid",
+    ]],
     body: bill.members.map((m) => [
       m.profile.full_name,
       m.meals.toFixed(2),
-      tk(m.mealCost),
-      tk(m.fixedShare),
-      tk(m.customShare),
-      tk(m.total),
+      tk(m.mealExpense),
+      tk(m.commonShare),
+      tk(m.houseRent),
+      tk(m.totalDue),
+      tk(m.deposit),
+      (m.balance < 0 ? "-" : "+") + tk(Math.abs(m.balance)),
+      m.isPaid ? "Paid" : "Unpaid",
     ]),
     foot: [[
-      "GRAND TOTAL",
+      "TOTAL",
       bill.totalMeals.toFixed(2),
+      tk(bill.totalBazar),
+      tk(bill.commonPool),
+      tk(bill.totalHouseRent),
+      tk(bill.grandTotalDue),
+      tk(bill.totalDeposit),
       "",
       "",
-      "",
-      tk(bill.grandTotal),
     ]],
     headStyles: { fillColor: PRIMARY },
     footStyles: { fillColor: DARK },
-    styles: { fontSize: 9 },
+    styles: { fontSize: 8 },
   });
 
   // ---- Bazar Detail ----
@@ -113,16 +132,19 @@ export function generateBillPdf(opts: {
   y = (doc as JsPdfWithAutoTable).lastAutoTable.finalY + 10;
   doc.setFontSize(12);
   doc.text("Other Expenses", 14, y);
+  const othersForPdf = [
+    ...effectiveFixedBills(others),
+    ...others.filter((e) => e.category === "common"),
+  ];
   autoTable(doc, {
     startY: y + 3,
-    head: [["Category", "Amount", "Split Method", "Per Person Share"]],
-    body: others.map((e) => [
-      e.category === "custom" ? e.label ?? "Custom" : CATEGORY_LABELS[e.category],
+    head: [["Category", "Amount", "Per Person Share"]],
+    body: othersForPdf.map((e) => [
+      e.category === "common" || e.category === "custom"
+        ? e.label ?? CATEGORY_LABELS[e.category]
+        : CATEGORY_LABELS[e.category],
       tk(Number(e.amount)),
-      e.split_method === "equal" ? "Equal per head" : "Meal-based",
-      e.split_method === "equal" && bill.memberCount > 0
-        ? tk(Number(e.amount) / bill.memberCount)
-        : "proportional",
+      bill.memberCount > 0 ? tk(Number(e.amount) / bill.memberCount) : "-",
     ]),
     headStyles: { fillColor: [255, 107, 107] },
     styles: { fontSize: 8 },

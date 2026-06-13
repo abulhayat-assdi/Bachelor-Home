@@ -13,6 +13,8 @@ import {
 import { useAppStore } from "@/store/useAppStore";
 import { useBill } from "@/hooks/useBill";
 import { MonthSwitcher } from "@/components/shared/MonthSwitcher";
+import { DutyHero } from "@/components/shared/DutyHero";
+import { TodayMeals } from "@/components/meal/TodayMeals";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,10 +29,16 @@ const fadeUp = {
 
 export default function DashboardPage() {
   const { year, month } = useAppStore();
-  const { bill, meals, bazar, monthRow, me, loading } = useBill(year, month);
+  const { bill, meals, bazar, duty, profiles, monthRow, me, loading } =
+    useBill(year, month);
 
   const myBill = bill.members.find((m) => m.profile.id === me?.id);
   const today = todayIso();
+  const activeMembers = profiles.filter((p) => p.is_active);
+  // Only show "today's meals to cook" when the viewed month contains today.
+  const todayInView = today.startsWith(
+    `${year}-${String(month).padStart(2, "0")}`
+  );
   const myToday = meals.find(
     (m) => m.user_id === me?.id && m.entry_date === today
   );
@@ -57,6 +65,25 @@ export default function DashboardPage() {
         </div>
       ) : (
         <>
+          {/* Hero: who manages food today + their duty span */}
+          {todayInView && (
+            <motion.div {...fadeUp} transition={{ delay: 0 }}>
+              <DutyHero members={activeMembers} duty={duty} today={today} />
+            </motion.div>
+          )}
+
+          {/* Today's meals — what the cook needs to prepare (read-only) */}
+          {todayInView && !monthRow?.is_locked && (
+            <motion.div {...fadeUp} transition={{ delay: 0.05 }}>
+              <TodayMeals
+                members={activeMembers}
+                meals={meals}
+                duty={duty}
+                today={today}
+              />
+            </motion.div>
+          )}
+
           {/* Summary cards */}
           <div className="grid grid-cols-2 gap-3">
             <motion.div {...fadeUp} transition={{ delay: 0 }}>
@@ -106,7 +133,7 @@ export default function DashboardPage() {
                     My Bill
                   </div>
                   <div className="mt-1.5 text-2xl font-extrabold">
-                    {formatMoney(myBill?.total ?? 0)}
+                    {formatMoney(myBill?.totalDue ?? 0)}
                   </div>
                 </CardContent>
               </Card>
@@ -185,7 +212,7 @@ export default function DashboardPage() {
                           </div>
                         </div>
                         <div className="text-sm font-bold">
-                          {formatMoney(m.total)}
+                          {formatMoney(m.totalDue)}
                         </div>
                       </div>
                     );

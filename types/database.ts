@@ -8,6 +8,7 @@ export interface Profile {
   role: Role;
   order_index: number | null;
   is_active: boolean;
+  default_rent: number;
   created_at: string;
 }
 
@@ -49,8 +50,33 @@ export interface BazarExpense {
   updated_at: string;
 }
 
-export type ExpenseCategory = "rent" | "electricity" | "gas" | "water" | "custom";
+export type ExpenseCategory =
+  | "rent"
+  | "electricity"
+  | "gas"
+  | "water"
+  | "wifi"
+  | "maid"
+  | "common"
+  | "custom";
 export type SplitMethod = "equal" | "meal_based";
+
+/** Fixed common bills the admin manages (auto-seeded each month). */
+export const FIXED_BILL_CATEGORIES: ExpenseCategory[] = [
+  "maid",
+  "wifi",
+  "electricity",
+  "water",
+  "gas",
+];
+
+export interface MemberMonth {
+  month_id: string;
+  user_id: string;
+  house_rent: number | null;
+  is_paid: boolean;
+  updated_at: string;
+}
 
 export interface OtherExpense {
   id: string;
@@ -69,7 +95,8 @@ export type NotificationType =
   | "meal_updated"
   | "member_joined"
   | "bill_ready"
-  | "month_locked";
+  | "month_locked"
+  | "role_changed";
 
 export interface AppNotification {
   id: string;

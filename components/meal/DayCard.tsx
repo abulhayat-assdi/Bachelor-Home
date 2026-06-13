@@ -14,18 +14,23 @@ export function DayCard({
   members,
   entries,
   meId,
-  isFuture,
+  isPast,
   isLocked,
+  isAdmin,
   isToday,
+  variant,
   onChange,
 }: {
   date: string;
   members: Profile[];
   entries: MealEntry[];
   meId: string | null;
-  isFuture: boolean;
+  isPast: boolean;
   isLocked: boolean;
+  isAdmin: boolean;
   isToday: boolean;
+  /** "mine" = my editable steppers; "everyone" = read-only house breakdown. */
+  variant: "mine" | "everyone";
   onChange: (
     userId: string,
     date: string,
@@ -50,18 +55,12 @@ export function DayCard({
     lunch: Number(myEntry?.lunch ?? 0),
     dinner: Number(myEntry?.dinner ?? 0),
   };
-  const editable = !isFuture && !isLocked && !!meId;
+  const myTotal = my.breakfast + my.lunch + my.dinner;
 
-  if (isFuture) {
-    return (
-      <div className="flex items-center justify-between rounded-xl border border-dashed border-border-c px-4 py-2 opacity-50">
-        <span className="text-xs font-semibold">{shortDate(date)}</span>
-        <span className="flex items-center gap-1 text-[10px] text-muted">
-          <Lock className="h-3 w-3" /> locked until {shortDate(date)}
-        </span>
-      </div>
-    );
-  }
+  // Past days are frozen for members; admins keep edit rights. Today and
+  // future days stay open so members can plan ahead.
+  const frozen = isLocked || (isPast && !isAdmin);
+  const editable = variant === "mine" && !frozen && !!meId;
 
   return (
     <motion.div
@@ -80,21 +79,25 @@ export function DayCard({
                 TODAY
               </span>
             )}
-            {isLocked && <Lock className="h-3 w-3 text-accent" />}
+            {variant === "mine" && frozen && (
+              <Lock className="h-3 w-3 text-accent" />
+            )}
           </div>
           <div className="text-[11px] text-muted">{weekdayName(date)}</div>
         </div>
         <div className="text-right">
           <div className="text-lg font-extrabold text-secondary">
-            {formatMeals(dayTotal)}
+            {formatMeals(variant === "mine" ? myTotal : dayTotal)}
           </div>
-          <div className="text-[10px] text-muted">day total</div>
+          <div className="text-[10px] text-muted">
+            {variant === "mine" ? "my total" : "day total"}
+          </div>
         </div>
       </div>
 
-      {/* My row — editable steppers */}
-      {meId && (
-        <div className="mx-3 mb-2 flex items-center gap-2 rounded-xl bg-bg/60 p-3">
+      {/* MINE — editable steppers */}
+      {variant === "mine" && meId && (
+        <div className="mx-3 mb-3 flex items-center gap-2 rounded-xl bg-bg/60 p-3">
           <MealInput
             label="Breakfast"
             value={my.breakfast}
@@ -116,48 +119,54 @@ export function DayCard({
         </div>
       )}
 
-      {/* Other members — read-only */}
-      <button
-        onClick={() => setExpanded((e) => !e)}
-        className="flex w-full items-center justify-between px-4 py-2 text-[11px] font-semibold text-muted"
-      >
-        Everyone&apos;s meals
-        <ChevronDown
-          className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")}
-        />
-      </button>
-      {expanded && (
-        <div className="flex flex-col gap-1 px-3 pb-3">
-          {members.map((p) => {
-            const e = entryFor(p.id);
-            const isMe = p.id === meId;
-            return (
-              <div
-                key={p.id}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-lg px-2 py-1.5",
-                  isMe && "bg-primary/5"
-                )}
-              >
-                <Avatar
-                  name={p.full_name}
-                  src={p.avatar_url}
-                  color={memberColor(p.order_index)}
-                  size={26}
-                />
-                <span className="flex-1 truncate text-xs font-medium">
-                  {p.full_name}
-                </span>
-                <div className="flex items-center gap-2 text-xs tabular-nums text-muted">
-                  <span>B {formatMeals(Number(e?.breakfast ?? 0))}</span>
-                  <span>L {formatMeals(Number(e?.lunch ?? 0))}</span>
-                  <span>D {formatMeals(Number(e?.dinner ?? 0))}</span>
-                  {!isMe && <Lock className="h-3 w-3 opacity-40" />}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+      {/* EVERYONE — read-only breakdown */}
+      {variant === "everyone" && (
+        <>
+          <button
+            onClick={() => setExpanded((e) => !e)}
+            className="flex w-full items-center justify-between px-4 py-2 text-[11px] font-semibold text-muted"
+          >
+            Everyone&apos;s meals
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 transition-transform",
+                expanded && "rotate-180"
+              )}
+            />
+          </button>
+          {expanded && (
+            <div className="flex flex-col gap-1 px-3 pb-3">
+              {members.map((p) => {
+                const e = entryFor(p.id);
+                const isMe = p.id === meId;
+                return (
+                  <div
+                    key={p.id}
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-lg px-2 py-1.5",
+                      isMe && "bg-primary/5"
+                    )}
+                  >
+                    <Avatar
+                      name={p.full_name}
+                      src={p.avatar_url}
+                      color={memberColor(p.order_index)}
+                      size={26}
+                    />
+                    <span className="flex-1 truncate text-xs font-medium">
+                      {p.full_name}
+                    </span>
+                    <div className="flex items-center gap-2 text-xs tabular-nums text-muted">
+                      <span>B {formatMeals(Number(e?.breakfast ?? 0))}</span>
+                      <span>L {formatMeals(Number(e?.lunch ?? 0))}</span>
+                      <span>D {formatMeals(Number(e?.dinner ?? 0))}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </motion.div>
   );

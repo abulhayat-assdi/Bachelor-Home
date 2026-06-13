@@ -12,8 +12,14 @@ export function useBill(year: number, month: number) {
 
   const bill = useMemo(
     () =>
-      calculateMonthlyBill(profiles, data.meals, data.bazar, data.others),
-    [profiles, data.meals, data.bazar, data.others]
+      calculateMonthlyBill(
+        profiles,
+        data.meals,
+        data.bazar,
+        data.others,
+        data.memberMonths
+      ),
+    [profiles, data.meals, data.bazar, data.others, data.memberMonths]
   );
 
   return {

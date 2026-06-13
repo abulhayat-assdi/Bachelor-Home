@@ -6,6 +6,7 @@ import {
   CheckCheck,
   Lock,
   Receipt,
+  Shield,
   ShoppingBasket,
   UserPlus,
   UtensilsCrossed,
@@ -23,6 +24,7 @@ const ICONS: Record<NotificationType, React.ElementType> = {
   member_joined: UserPlus,
   bill_ready: Receipt,
   month_locked: Lock,
+  role_changed: Shield,
 };
 
 const COLORS: Record<NotificationType, string> = {
@@ -32,6 +34,7 @@ const COLORS: Record<NotificationType, string> = {
   member_joined: "bg-primary/15 text-primary",
   bill_ready: "bg-accent/15 text-accent",
   month_locked: "bg-accent/15 text-accent",
+  role_changed: "bg-primary/15 text-primary",
 };
 
 export default function NotificationsPage() {

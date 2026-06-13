@@ -23,9 +23,16 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const full_name = (body?.full_name ?? "").trim();
   const email = (body?.email ?? "").trim().toLowerCase();
+  const password = body?.password ?? "";
   if (!full_name || !email || !/^\S+@\S+\.\S+$/.test(email)) {
     return NextResponse.json(
       { error: "Valid full name and email required" },
+      { status: 400 }
+    );
+  }
+  if (typeof password !== "string" || password.length < 6) {
+    return NextResponse.json(
+      { error: "Password must be at least 6 characters" },
       { status: 400 }
     );
   }
@@ -49,15 +56,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: dirErr.message }, { status: 500 });
   }
 
-  // creates the auth user + sends invite email; profile row is created by trigger
-  const appUrl =
-    process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin;
-  const { error: inviteErr } = await admin.auth.admin.inviteUserByEmail(email, {
-    data: { full_name },
-    redirectTo: `${appUrl}/auth/callback?next=/profile`,
+  // creates the auth user with the admin-set password (email pre-confirmed so
+  // the member can log in immediately); profile row is created by trigger.
+  // Member can change name/password/etc. themselves later from their profile.
+  const { error: createErr } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+    user_metadata: { full_name },
   });
-  if (inviteErr) {
-    return NextResponse.json({ error: inviteErr.message }, { status: 500 });
+  if (createErr) {
+    return NextResponse.json({ error: createErr.message }, { status: 500 });
   }
 
   // member joins all current-month columns + duty schedule recalculated

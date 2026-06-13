@@ -9,18 +9,17 @@ import { createClient } from "@/lib/supabase/client";
 import { MonthSwitcher } from "@/components/shared/MonthSwitcher";
 import { MemberManager } from "@/components/admin/MemberManager";
 import { ScheduleEditor } from "@/components/admin/ScheduleEditor";
-import { ExpenseManager } from "@/components/admin/ExpenseManager";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, monthLabel } from "@/lib/utils";
 
-const TABS = ["Members", "Schedule", "Expenses", "Month"] as const;
+const TABS = ["Members", "Schedule", "Month"] as const;
 type Tab = (typeof TABS)[number];
 
 export default function AdminPage() {
   const { year, month } = useAppStore();
-  const { duty, others, monthRow, monthId, loading, refetch } = useMonthData(
+  const { duty, monthRow, monthId, loading, refetch } = useMonthData(
     year,
     month
   );
@@ -85,6 +84,7 @@ export default function AdminPage() {
           {tab === "Members" && (
             <MemberManager
               profiles={profiles}
+              meId={me.id}
               monthId={monthId}
               onChanged={() => {
                 refetchProfiles();
@@ -97,14 +97,6 @@ export default function AdminPage() {
               duty={duty}
               profiles={profiles}
               monthId={monthId}
-              onChanged={refetch}
-            />
-          )}
-          {tab === "Expenses" && me && (
-            <ExpenseManager
-              others={others}
-              monthId={monthId}
-              meId={me.id}
               onChanged={refetch}
             />
           )}

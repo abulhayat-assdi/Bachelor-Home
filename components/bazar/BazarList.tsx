@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { Lock, Pencil, Plus } from "lucide-react";
 import type { BazarExpense, DutyDay, Profile } from "@/types/database";
 import { Avatar } from "@/components/ui/avatar";
-import { ItemComment } from "./ItemComment";
 import { BazarEntryModal } from "./BazarEntryModal";
 import { memberColor } from "@/lib/constants";
 import { cn, formatMoney, shortDate, todayIso, weekdayName } from "@/lib/utils";
@@ -24,6 +23,7 @@ export function BazarList({
   meId,
   isAdmin,
   isLocked,
+  scope,
   onSave,
 }: {
   duty: DutyDay[];
@@ -32,6 +32,8 @@ export function BazarList({
   meId: string | null;
   isAdmin: boolean;
   isLocked: boolean;
+  /** "mine" = only my duty days, editable; "everyone" = all days, read-only. */
+  scope: "mine" | "everyone";
   onSave: (
     shopperId: string,
     date: string,
@@ -75,13 +77,16 @@ export function BazarList({
 
   const sortedDuty = useMemo(
     () =>
-      [...duty].sort((a, b) => b.duty_date.localeCompare(a.duty_date)),
-    [duty]
+      [...duty]
+        .filter((d) => scope === "everyone" || d.user_id === meId)
+        .sort((a, b) => b.duty_date.localeCompare(a.duty_date)),
+    [duty, scope, meId]
   );
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Duty schedule strip */}
+      {/* Duty schedule strip — only in the everyone view */}
+      {scope === "everyone" && (
       <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
         {blocks.map((b, i) => (
           <div
@@ -105,6 +110,13 @@ export function BazarList({
           </div>
         ))}
       </div>
+      )}
+
+      {scope === "mine" && sortedDuty.length === 0 && (
+        <p className="rounded-2xl bg-surface px-4 py-6 text-center text-xs text-muted shadow-card dark:shadow-card-dark">
+          You have no bazar duty days this month.
+        </p>
+      )}
 
       {/* Day-by-day list */}
       <div className="flex flex-col gap-2">
@@ -113,6 +125,7 @@ export function BazarList({
           const expense = bazar.find((b) => b.expense_date === d.duty_date);
           const isFuture = d.duty_date > today;
           const canEdit =
+            scope === "mine" &&
             !isLocked &&
             !isFuture &&
             (isAdmin || (meId !== null && d.user_id === meId));
@@ -125,7 +138,7 @@ export function BazarList({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: Math.min(idx * 0.015, 0.3) }}
               className={cn(
-                "flex items-center gap-3 rounded-2xl bg-surface px-4 py-3 shadow-card dark:shadow-card-dark",
+                "flex items-start gap-3 rounded-2xl bg-surface px-4 py-3 shadow-card dark:shadow-card-dark",
                 isFuture && "opacity-50",
                 isToday && "ring-2 ring-secondary"
               )}
@@ -161,8 +174,12 @@ export function BazarList({
                 >
                   {expense ? formatMoney(Number(expense.amount)) : "—"}
                 </div>
+                {expense?.comment && (
+                  <div className="mt-0.5 whitespace-pre-wrap text-[11px] leading-snug text-muted">
+                    {expense.comment}
+                  </div>
+                )}
               </div>
-              {expense?.comment && <ItemComment comment={expense.comment} />}
               {canEdit ? (
                 <button
                   aria-label={expense ? "Edit expense" : "Add expense"}

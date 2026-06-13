@@ -37,6 +37,16 @@ body {
   background: var(--bg);
 }
 
+/* On touch devices keep form controls >= 16px so iOS Safari doesn't
+   auto-zoom the page when a field is focused. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -52,6 +62,9 @@ body {
   }
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
   }
   .no-scrollbar::-webkit-scrollbar {
     display: none;

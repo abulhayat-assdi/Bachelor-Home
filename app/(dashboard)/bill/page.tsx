@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { MonthSwitcher } from "@/components/shared/MonthSwitcher";
 import { BillSummary } from "@/components/bill/BillSummary";
 import { ExportButton } from "@/components/bill/ExportButton";
+import { FixedBillsEditor } from "@/components/bill/FixedBillsEditor";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -23,7 +24,11 @@ export default function BillPage() {
     monthRow,
     monthId,
     loading,
+    refetch,
+    setHouseRent,
+    setPaid,
   } = useBill(year, month);
+  const isAdmin = me?.role === "admin";
   const [notifying, setNotifying] = useState(false);
   const [notified, setNotified] = useState(false);
 
@@ -44,7 +49,7 @@ export default function BillPage() {
       <div>
         <h1 className="text-xl font-extrabold">Monthly Bill</h1>
         <p className="text-xs text-muted">
-          Meal cost + fixed costs + custom costs = total per person.
+          Meal expense + common expenses + house rent = each member&apos;s total.
         </p>
       </div>
 
@@ -56,7 +61,25 @@ export default function BillPage() {
         </div>
       ) : (
         <>
-          <BillSummary bill={bill} others={others} meId={me?.id ?? null} />
+          <BillSummary
+            bill={bill}
+            others={others}
+            meId={me?.id ?? null}
+            isAdmin={isAdmin}
+            onSetRent={setHouseRent}
+            onSetPaid={setPaid}
+          />
+
+          {/* Admin: edit the month's fixed common bills. Updates the bill above. */}
+          {isAdmin && me && !monthRow?.is_locked && (
+            <FixedBillsEditor
+              others={others}
+              monthId={monthId}
+              meId={me.id}
+              onChanged={refetch}
+            />
+          )}
+
           <ExportButton
             year={year}
             month={month}
