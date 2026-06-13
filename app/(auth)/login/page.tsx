@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Loader2, LogIn } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +12,7 @@ import { Logo } from "@/components/shared/Logo";
 import { APP_TAGLINE } from "@/lib/constants";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -25,16 +27,13 @@ export default function LoginPage() {
       email,
       password,
     });
+    setLoading(false);
     if (err) {
-      setLoading(false);
       setError(err.message);
       return;
     }
-    // Hard navigation (not router.push) so the browser sends the freshly-set
-    // auth cookies in a fresh document request. A soft navigation races the
-    // middleware's getUser() check — on slow mobile networks it would read a
-    // not-yet-synced session and bounce back to /login, leaving the user stuck.
-    window.location.assign("/");
+    router.push("/");
+    router.refresh();
   }
 
   return (
