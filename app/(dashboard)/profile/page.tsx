@@ -40,8 +40,8 @@ export default function ProfilePage() {
   useEffect(() => {
     createClient()
       .auth.getUser()
-      .then(({ data }) => {
-        if (data.user?.user_metadata?.must_change_password) {
+      .then((res: { data: { user: { user_metadata?: { must_change_password?: boolean } } | null } }) => {
+        if (res.data.user?.user_metadata?.must_change_password) {
           setMustChangePw(true);
         }
       });
